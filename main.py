@@ -1,8 +1,9 @@
 #import matplotlib.image as mpimg
 #import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image, ImageChops
+from PIL import Image, ImageChops, ImageDraw
 import math
+import random
 
 # ──────────────────── RMSE FUNCTION ────────────────────
 
@@ -41,7 +42,7 @@ print(err)
 
 # ──────────────────── CANVAS SETUP ────────────────────
 
-original = Image.open("images/image1.png") # Opening the original image
+original = Image.open("images/palette.jpg") # Opening the original image
 
 averageOriginalColor = original.resize((1,1)).getpixel((0,0)) # Gets the average color of the original image
 
@@ -49,6 +50,37 @@ averageOriginalColor = original.resize((1,1)).getpixel((0,0)) # Gets the average
 #   first parameter specifies the 'mode' of the new image (RGB)
 #   second parameter specifies the size of the canvas (a tuple containing the width and height of the original image)
 #   third parameter specifies the starting color of the canvas (the average color of the original image)
-canvas = Image.new("RGB", original.size, averageOriginalColor)
+originalWidth, originalHeight = original.size
+canvas = Image.new("RGB", (originalWidth, originalHeight), averageOriginalColor)
 
 #canvas.show() # Shows the starting canvas
+
+# ──────────────────── HILL CLIMBING ────────────────────
+
+def getRandomBoundingBox():
+    x0 = random.randrange(originalWidth-1)
+    y0 = random.randrange(originalHeight-1)
+    x1 = random.randrange(originalWidth-1)
+    y1 = random.randrange(originalHeight-1)
+
+    # Stupid complicated ternary stuff:
+    #   The ellipse drawing feature for PIL only works if x1 is larger than x0 AND if y1 is greater than y0.
+    #   That means I have to return the smallest randomly generated x coordinate and y coordinate as x0 and y0 (respectively)
+    #       (and the same goes for x1 and y1, but they have to be the biggest.)
+    return ((x0 if x0 < x1 else x1),(y0 if y0 < y1 else y1),(x0 if x0 > x1 else x1),(y0 if y0 > y1 else y1))
+
+canvasEdit = ImageDraw.Draw(canvas)
+x0,y0,x1,y1 = getRandomBoundingBox()
+shape = [(x0, y0), (x1, y1)] 
+
+# Getting the average color of the space inside of the added shape
+transparent = Image.new('RGBA', (originalWidth,originalHeight), (0, 0, 0, 0))
+transparentEdit = ImageDraw.Draw(transparent)
+transparentEdit.ellipse(shape, fill ="#000000")
+transparent1 = Image.new('RGBA', (originalWidth,originalHeight), (0, 0, 0, 0))
+transparent1.paste(original, (0,0), mask=transparent)
+transparent1.show()
+areaColor = transparent1.resize((1,1)).getpixel((0,0))
+
+canvasEdit.ellipse(shape, fill = areaColor)
+canvas.show()
