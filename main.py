@@ -7,10 +7,16 @@ import random
 
 # ──────────────────── RMSE FUNCTION ────────────────────
 
-def rmseFunction(path1, path2):
+# RMSE function for using file paths
+def rmseFunctionPaths(path1, path2):
     im1 = Image.open(path1)
     im2 = Image.open(path2)
-    #im1.show() # Opens up the image using Windows Photos (for me)
+    err = np.asarray(ImageChops.difference(im1, im2)) / 255 
+    err = math.sqrt(np.mean(np.square(err)))
+    return err
+
+# RMSE function for using PIL Images
+def rmseFunction(im1, im2):
     err = np.asarray(ImageChops.difference(im1, im2)) / 255 
     err = math.sqrt(np.mean(np.square(err)))
     return err
@@ -32,11 +38,11 @@ print(r.json())
 """
 
 
-# Example of using the rmse function to find the error between two images.
+# Example of using the rmse path function to find the error between two images.
 """
 path1 = "images/image1.png"
 path2 = "images/image2.png"
-err = rmseFunction(path1, path2)
+err = rmseFunctionPath(path1, path2)
 print(err)
 """
 
@@ -51,6 +57,7 @@ averageOriginalColor = original.resize((1,1)).getpixel((0,0)) # Gets the average
 #   second parameter specifies the size of the canvas (a tuple containing the width and height of the original image)
 #   third parameter specifies the starting color of the canvas (the average color of the original image)
 originalWidth, originalHeight = original.size
+
 canvas = Image.new("RGB", (originalWidth, originalHeight), averageOriginalColor)
 
 #canvas.show() # Shows the starting canvas
@@ -69,18 +76,55 @@ def getRandomBoundingBox():
     #       (and the same goes for x1 and y1, but they have to be the biggest.)
     return ((x0 if x0 < x1 else x1),(y0 if y0 < y1 else y1),(x0 if x0 > x1 else x1),(y0 if y0 > y1 else y1))
 
+# Getting the average color of the space inside of the added shape
+def getAverageColorInShape(shapeCoordinates):
+    transparent = Image.new('RGBA', (originalWidth,originalHeight), (0, 0, 0, 0))
+    transparentEdit = ImageDraw.Draw(transparent)
+    transparentEdit.ellipse(shapeCoordinates, fill ="#000000")
+    transparent1 = Image.new('RGBA', (originalWidth,originalHeight), (0, 0, 0, 0))
+    transparent1.paste(original, (0,0), mask=transparent)
+    #transparent1.show()
+    areaColor = transparent1.resize((1,1)).getpixel((0,0))
+
+    return areaColor
+
 canvasEdit = ImageDraw.Draw(canvas)
 x0,y0,x1,y1 = getRandomBoundingBox()
 shape = [(x0, y0), (x1, y1)] 
 
-# Getting the average color of the space inside of the added shape
-transparent = Image.new('RGBA', (originalWidth,originalHeight), (0, 0, 0, 0))
-transparentEdit = ImageDraw.Draw(transparent)
-transparentEdit.ellipse(shape, fill ="#000000")
-transparent1 = Image.new('RGBA', (originalWidth,originalHeight), (0, 0, 0, 0))
-transparent1.paste(original, (0,0), mask=transparent)
-transparent1.show()
-areaColor = transparent1.resize((1,1)).getpixel((0,0))
+areaColor = getAverageColorInShape(shape)
 
 canvasEdit.ellipse(shape, fill = areaColor)
+
+err = rmseFunction(original, canvas)
+print(err)
+#canvas.show()
+
+for i in range(4):
+    i+=1
+    canvasAlternate = Image.new("RGB", (originalWidth, originalHeight), averageOriginalColor)
+    canvasEditAlternate = ImageDraw.Draw(canvasAlternate)
+    x0a,y0a,x1a,y1a = getRandomBoundingBox()
+    shapeAlternate = [(x0a, y0a), (x1a, y1a)] 
+    areaColorAlternate = getAverageColorInShape(shapeAlternate)
+
+    canvasEditAlternate.ellipse(shapeAlternate, fill = areaColorAlternate)
+
+    errAlternate = rmseFunction(original, canvasAlternate)
+    if errAlternate < err:
+        canvas = canvasAlternate
+        cavnasEdit = canvasEditAlternate
+
+        x0 = x0a
+        x1 = x1a
+        y0 = y0a
+        y1 = y1a
+
+        shape = shapeAlternate
+        areaColor = areaColorAlternate
+        err = errAlternate
+        print(err)
+
 canvas.show()
+
+        
