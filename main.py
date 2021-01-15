@@ -65,10 +65,10 @@ canvas = Image.new("RGB", (originalWidth, originalHeight), averageOriginalColor)
 # ──────────────────── HILL CLIMBING ────────────────────
 
 def getRandomBoundingBox():
-    x0 = random.randrange(originalWidth-1)
-    y0 = random.randrange(originalHeight-1)
-    x1 = random.randrange(originalWidth-1)
-    y1 = random.randrange(originalHeight-1)
+    x0 = random.randrange(originalWidth-3) + 1
+    y0 = random.randrange(originalHeight-3) + 1
+    x1 = random.randrange(originalWidth-3) + 1
+    y1 = random.randrange(originalHeight-3) + 1
 
     # Stupid complicated ternary stuff:
     #   The ellipse drawing feature for PIL only works if x1 is larger than x0 AND if y1 is greater than y0.
@@ -94,37 +94,146 @@ shape = [(x0, y0), (x1, y1)]
 
 areaColor = getAverageColorInShape(shape)
 
+canvasAlternate = canvas
+canvasEditAlternate = ImageDraw.Draw(canvasAlternate)
 canvasEdit.ellipse(shape, fill = areaColor)
 
-err = rmseFunction(original, canvas)
+err = rmseFunction(original, canvasAlternate)
 print(err)
 #canvas.show()
 
 for i in range(4):
     i+=1
     canvasAlternate = Image.new("RGB", (originalWidth, originalHeight), averageOriginalColor)
-    canvasEditAlternate = ImageDraw.Draw(canvasAlternate)
+
     x0a,y0a,x1a,y1a = getRandomBoundingBox()
+
+    while (x1a - x0a < 11 or y1a - y0a < 11): # To make sure the generated shape isn't too small
+        x0a,y0a,x1a,y1a = getRandomBoundingBox()
+
     shapeAlternate = [(x0a, y0a), (x1a, y1a)] 
+
     areaColorAlternate = getAverageColorInShape(shapeAlternate)
 
     canvasEditAlternate.ellipse(shapeAlternate, fill = areaColorAlternate)
 
     errAlternate = rmseFunction(original, canvasAlternate)
     if errAlternate < err:
-        canvas = canvasAlternate
-        cavnasEdit = canvasEditAlternate
+        #canvas = canvasAlternate
+        #cavnasEdit = canvasEditAlternate
 
         x0 = x0a
         x1 = x1a
         y0 = y0a
         y1 = y1a
 
-        shape = shapeAlternate
-        areaColor = areaColorAlternate
+        #shape = shapeAlternate
+        #areaColor = areaColorAlternate
         err = errAlternate
         print(err)
 
-canvas.show()
+changePossibilities = ("xCenter", "yCenter", "xRadius", "yRadius") # 
+multiplierPossibilities = (1,-1) # possible multipliers for when randomly moving shape, (-) vs (+) determines what direction
+
+changerFactorConstant = 100 # A constant that determines the range (in pixels) of possible shape edits
+
+for i in range(50):
+
+    x0a = x0
+    x1a = x1
+    y0a = y0
+    y1a = y1
+
+    canvasAlternate = Image.new("RGB", (originalWidth, originalHeight), averageOriginalColor)
+    canvasEditAlternate = ImageDraw.Draw(canvasAlternate)
+
+    change = random.choice(changePossibilities)
+
+    if change == "xCenter":
+
+        changeFactor = random.randrange(originalWidth // changerFactorConstant) + 2 # The x position can change by anywhere from 2 pixels to 1/50th of the screen width
+        multiplier = random.choice(multiplierPossibilities) # Randomly chooses whether it moves positive or negative
+
+        # This while loops is to make sure the edit doesn't force the shape to spawn outside of the image boundries and create an error.
+        while (x0a + (changeFactor * multiplier) < 0) or (x1a + (changeFactor * multiplier) > originalWidth - 1):
+            print("a")
+            # Same stuff as what was written before the while loop
+            changeFactor = random.randrange(originalWidth // changerFactorConstant) + 2
+            multiplier = random.choice(multiplierPossibilities)
+            
+        # Making the changes to the x coordinates
+        x0a += (changeFactor * multiplier) 
+        x1a += (changeFactor * multiplier)
+
+    elif change == "yCenter":
+
+        changeFactor = random.randrange(originalHeight // changerFactorConstant) + 2 # The y position can change by anywhere from 2 pixels to 1/50th of the screen height
+        multiplier = random.choice(multiplierPossibilities) # Randomly chooses whether it moves positive or negative
+
+        # This while loops is to make sure the edit doesn't force the shape to spawn outside of the image boundries and create an error.
+        while (y0a + (changeFactor * multiplier) < 0) or (y1a + (changeFactor * multiplier) > originalHeight - 1):
+            print("b")
+            # Same stuff as what was written before the while loop
+            changeFactor = random.randrange(originalHeight // changerFactorConstant) + 2
+            multiplier = random.choice(multiplierPossibilities)
+            
+        # Making the changes to the y coordinates
+        y0a += (changeFactor * multiplier) 
+        y1a += (changeFactor * multiplier)
+
+    elif change == "xRadius":
+
+        changeFactor = random.randrange(originalWidth // (changerFactorConstant / 2)) + 2 # I divided the changeFactorConstant by 2 so that I can add the same constant to both coordinates
+        multiplier = random.choice(multiplierPossibilities)
+
+        # I added an extra conditional check to make sure the the mutation doesn't make the shape smaller than 10 pixels
+        while (x0a + (changeFactor * multiplier) < 0) or (x1a + (changeFactor * multiplier) > originalWidth - 1) and (x1a - x0a - (changeFactor * multiplier * 2) < 10):
+            print("c")
+            changeFactor = random.randrange(originalWidth // (changerFactorConstant / 2)) + 2
+            multiplier = random.choice(multiplierPossibilities)
+
+        x0a += (changeFactor * multiplier)
+        x1a += (changeFactor * multiplier)
+
+    elif change == "yRadius":
+
+        changeFactor = random.randrange(originalHeight // (changerFactorConstant / 2)) + 2 # I divided the changeFactorConstant by 2 so that I can add the same constant to both coordinates
+        multiplier = random.choice(multiplierPossibilities)
+
+        # I added an extra conditional check to make sure the the mutation doesn't make the shape smaller than 10 pixels
+        while (y0a + (changeFactor * multiplier) < 0) or (y1a + (changeFactor * multiplier) > originalHeight - 1) and (y1a - y0a - (changeFactor * multiplier * 2) < 10):
+            print("d")
+            changeFactor = random.randrange(originalHeight // (changerFactorConstant / 2)) + 2
+            multiplier = random.choice(multiplierPossibilities)
+
+        y0a += (changeFactor * multiplier)
+        y1a += (changeFactor * multiplier)
+
+
+    shapeAlternate = [(x0a, y0a), (x1a, y1a)] 
+
+    areaColorAlternate = getAverageColorInShape(shapeAlternate)
+
+    canvasEditAlternate.ellipse(shapeAlternate, fill = areaColorAlternate)
+
+    errAlternate = rmseFunction(original, canvasAlternate)
+    if errAlternate < err:
+        #canvas = canvasAlternate
+        #cavnasEdit = canvasEditAlternate
+
+        x0 = x0a
+        x1 = x1a
+        y0 = y0a
+        y1 = y1a
+
+        #shape = shapeAlternate
+        #areaColor = areaColorAlternate
+        err = errAlternate
+        print(err)
+    else: 
+        print("Mutation failed")
+
+print(err)
+#canvas.show()
 
         
